@@ -218,10 +218,12 @@ class HolographicPanel(tk.Toplevel):
         chips_frame.pack(fill="x", padx=8, pady=(6, 4))
 
         quick_actions = [
-            ("☀️ Briefing", lambda: self.on_send_callback("morning briefing")),
-            ("⚡ System", lambda: self.on_send_callback("check system status and battery")),
+            ("☀️ Briefing", lambda: self.on_send_callback("give me my morning briefing")),
+            ("⏱️ Focus", lambda: self.on_send_callback("start a 25 minute focus session for deep work")),
+            ("📋 Clip AI", lambda: self.on_send_callback("summarize what is on my clipboard")),
+            ("📂 Downloads", lambda: self.on_send_callback("show my recent downloads")),
             ("👁️ Screen", lambda: self.on_send_callback("look at my screen and tell me what you see")),
-            ("📝 Tasks", lambda: self.on_send_callback("list my pending tasks")),
+            ("⚡ System", lambda: self.on_send_callback("check system status and battery")),
         ]
         for text, cmd in quick_actions:
             btn = tk.Button(
@@ -652,6 +654,10 @@ class DollWidget(tk.Tk):
         self.voice_thread = threading.Thread(target=self._voice_loop, daemon=True)
         self.voice_thread.start()
 
+        # Start global hotkey listener (Ctrl+Alt+J)
+        self.hotkey_thread = threading.Thread(target=self._listen_global_hotkey, daemon=True)
+        self.hotkey_thread.start()
+
         # Greet user softly on launch
         self.after(600, self._startup_greeting)
 
@@ -696,7 +702,10 @@ class DollWidget(tk.Tk):
         self.menu.add_cascade(label="💬 Messaging Apps", menu=msg_menu)
 
         self.menu.add_separator()
-        self.menu.add_command(label="☀️ Morning Briefing", command=lambda: self.send_user_message("morning briefing"))
+        self.menu.add_command(label="☀️ Morning Briefing", command=lambda: self.send_user_message("give me my morning briefing"))
+        self.menu.add_command(label="⏱️ Start 25m Focus Session", command=lambda: self.send_user_message("start a 25 minute focus session"))
+        self.menu.add_command(label="📋 AI Summarize Clipboard", command=lambda: self.send_user_message("summarize what is on my clipboard"))
+        self.menu.add_command(label="📂 Recent Downloads", command=lambda: self.send_user_message("show my recent downloads"))
         self.menu.add_command(label="⚡ System Status", command=lambda: self.send_user_message("check system status and battery"))
         self.menu.add_command(label="👁️ Screen Vision", command=lambda: self.send_user_message("look at my screen and tell me what you see"))
         self.menu.add_command(label="🔴 Record Meeting / Call", command=lambda: self.send_user_message("start listening to my meeting and take notes"))
@@ -845,7 +854,9 @@ class DollWidget(tk.Tk):
                 item = self.msg_queue.get_nowait()
                 mtype, data = item
 
-                if mtype == "state":
+                if mtype == "toggle_panel":
+                    self.panel.toggle_panel()
+                elif mtype == "state":
                     self.set_doll_state(data)
                 elif mtype == "response":
                     self.set_doll_state("speaking")
@@ -947,6 +958,32 @@ class DollWidget(tk.Tk):
 
             if detected and self.wake_active and not self.is_recording:
                 self._record_and_transcribe()
+
+    def _listen_global_hotkey(self):
+        """Listen for Ctrl+Alt+J anywhere in Windows to toggle the Jarvis chat panel."""
+        if sys.platform != "win32":
+            return
+        try:
+            import ctypes
+            from ctypes import wintypes
+            user32 = ctypes.windll.user32
+            MOD_ALT = 0x0001
+            MOD_CONTROL = 0x0002
+            MOD_NOREPEAT = 0x4000
+            VK_J = 0x4A  # Virtual Key for 'J'
+            HOTKEY_ID = 9991
+
+            if user32.RegisterHotKey(None, HOTKEY_ID, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, VK_J):
+                msg = wintypes.MSG()
+                while self.voice_running:
+                    if user32.GetMessageW(ctypes.byref(msg), None, 0, 0) != 0:
+                        if msg.message == 0x0312 and msg.wParam == HOTKEY_ID:
+                            self.msg_queue.put(("toggle_panel", None))
+                        user32.TranslateMessage(ctypes.byref(msg))
+                        user32.DispatchMessageW(ctypes.byref(msg))
+                user32.UnregisterHotKey(None, HOTKEY_ID)
+        except Exception:
+            pass
 
     def quit_app(self):
         self.voice_running = False

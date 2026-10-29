@@ -1,6 +1,6 @@
 # 🤖 Jarvis - Intelligent Personal Assistant & Desktop Companion
 
-An AI-powered desktop assistant and interactive holographic companion built with multi-LLM support, voice capabilities, screen vision, system automation, and local persistence.
+An AI-powered desktop assistant and interactive holographic companion built with multi-LLM support, voice capabilities, screen vision, system automation, productivity tools, and local persistence.
 
 ---
 
@@ -16,15 +16,28 @@ An AI-powered desktop assistant and interactive holographic companion built with
   - Floating, draggable 3D-styled animated robot desktop pet.
   - Expressive visual states: `idle`, `listening`, `thinking`, `speaking`.
   - Dynamic speech bubbles and sci-fi audio sound effects.
-  - Right-click settings menu to toggle voice output, sound effects, wake word, or quit.
+  - Quick action chips: `☀️ Briefing`, `⏱️ Focus`, `📋 Clip AI`, `📂 Downloads`, `👁️ Screen`, `⚡ System`.
+  - Global Windows hotkey: Press **`Ctrl + Alt + J`** from any application to instantly summon or toggle the assistant panel.
+  - Right-click settings menu to launch focus sessions, summarize clipboard, check downloads, toggle wake word, or adjust position.
   - Automatically saves on-screen position across reboots (`doll_settings.json`).
+- **Productivity & Focus Suite (`focus_tools.py`)**:
+  - **Pomodoro Focus Sessions**: Start timed focus sessions (`start_focus_session`) with audio chimes and native Windows toast notifications upon completion.
+  - **Productivity Metrics**: Track completed sessions, daily focus hours, and all-time deep work statistics stored in SQLite (`get_focus_stats`).
+- **Smart Clipboard AI Copilot (`clipboard_ai_tools.py`)**:
+  - Read copied text straight from the clipboard, run AI transformations (`summarize`, `fix_grammar`, `explain`, `extract_tasks`, `to_json`), and copy the result back to the clipboard for instant pasting!
+- **Desktop File Finder & Quick Launcher (`desktop_tools.py`)**:
+  - Instantly search files across Desktop, Downloads, and Documents (`search_local_files`).
+  - View the latest downloaded files (`get_recent_downloads`).
+  - Open any file or folder directly in Windows File Explorer (`open_file_or_folder`).
+- **Morning Intelligence Briefing (`get_morning_briefing`)**:
+  - One-click daily briefing combining real-time local weather, battery and hardware health, calendar events, pending tasks, and focus stats.
 - **Voice System (`voice.py`)**:
   - **Wake Word Detection**: Hands-free activation via `"Hey Jarvis"` using `openwakeword`.
   - **Push-to-Talk Mode**: Optional keyboard-triggered voice input.
   - **Local Speech-to-Text**: Fast offline transcription using `faster-whisper`.
   - **Local Text-to-Speech**: Instant offline voice synthesis via `pyttsx3`.
   - **Voice Confirmations**: Sensitive operations prompt for vocal confirmation before executing.
-- **Extensive Tool Suite**:
+- **Extensive Tool Suite (43+ Tools)**:
   - 🖥️ **Screen Vision (`screen_vision_tools.py`)**: Full screen capture, active window inspection, and multimodal analysis.
   - 🎙️ **Meeting Recorder (`meeting_tools.py`)**: Audio recording with automatic offline local transcription and synced timestamps.
   - ⚙️ **System Automation (`system_tools.py`, `advanced_system_tools.py`)**: Volume, brightness, battery metrics, process management, and app launching.
@@ -41,12 +54,15 @@ An AI-powered desktop assistant and interactive holographic companion built with
 ## 📁 Repository Structure
 
 ```text
-├── jarvis.py                  # Core agent & tool loop CLI
-├── jarvis_doll.py             # Floating desktop doll GUI widget
+├── jarvis.py                  # Core agent & tool loop CLI (43+ tools)
+├── jarvis_doll.py             # Floating desktop doll GUI widget & hotkey listener
 ├── voice.py                   # Wake word, Whisper STT & pyttsx3 TTS
 ├── watchdog.py                # 24/7 background process supervisor
 ├── setup_autostart_247.py     # Windows autostart configuration utility
 │
+├── focus_tools.py             # Pomodoro & deep-work focus session tracker
+├── clipboard_ai_tools.py      # Smart clipboard AI copilot (summarize, fix grammar, etc.)
+├── desktop_tools.py           # Local file finder (Desktop/Downloads/Docs) & quick launcher
 ├── system_tools.py            # OS control (volume, brightness, apps)
 ├── advanced_system_tools.py   # Process & resource inspection
 ├── screen_vision_tools.py     # Screenshot & window vision tools
@@ -118,8 +134,6 @@ GEMINI_API_KEY=your_gemini_api_key_here
 JARVIS_MODEL=gemini-2.5-flash
 ```
 
-*(You can also configure Groq, OpenAI, or local Ollama—see `.env.example` for examples.)*
-
 ---
 
 ## 🎮 Running Jarvis
@@ -129,8 +143,10 @@ Run the floating companion on your desktop:
 ```bash
 python jarvis_doll.py
 ```
+- **Global Hotkey**: Press **`Ctrl + Alt + J`** from any open program or game to summon the assistant chat.
 - **Left click & drag**: Move the doll anywhere on your screen.
-- **Right click**: Open the settings menu (toggle wake word, mute sound, toggle voice).
+- **Right click**: Open the context menu to launch focus sessions, summarize clipboard, check downloads, toggle wake word, or mute audio.
+- **Quick Action Chips**: Click `☀️ Briefing`, `⏱️ Focus`, `📋 Clip AI`, `📂 Downloads`, `👁️ Screen`, or `⚡ System` to run commands instantly.
 
 ### Option B: Terminal Agent (CLI)
 Run the terminal-based assistant:
@@ -143,6 +159,9 @@ python jarvis.py --voice
 
 # Hands-free wake word mode (say "Hey Jarvis"):
 python jarvis.py --voice --wake
+
+# Quick Morning Briefing:
+python jarvis.py --briefing
 ```
 
 ### Option C: 24/7 Watchdog Mode

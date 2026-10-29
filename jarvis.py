@@ -348,6 +348,30 @@ try:
 except ImportError as e:
     print(f"(Meeting tools disabled: {e})")
 
+# Phase 12: Productivity Focus & Pomodoro
+try:
+    import focus_tools
+    TOOL_REGISTRY.update(focus_tools.REGISTRY)
+    TOOL_SCHEMAS.extend(focus_tools.SCHEMAS)
+except ImportError as e:
+    print(f"(Focus tools disabled: {e})")
+
+# Phase 13: Local desktop file search & launcher
+try:
+    import desktop_tools
+    TOOL_REGISTRY.update(desktop_tools.REGISTRY)
+    TOOL_SCHEMAS.extend(desktop_tools.SCHEMAS)
+except ImportError as e:
+    print(f"(Desktop tools disabled: {e})")
+
+# Phase 14: Smart clipboard AI copilot
+try:
+    import clipboard_ai_tools
+    TOOL_REGISTRY.update(clipboard_ai_tools.REGISTRY)
+    TOOL_SCHEMAS.extend(clipboard_ai_tools.SCHEMAS)
+except ImportError as e:
+    print(f"(Clipboard AI tools disabled: {e})")
+
 # Phase 2: Gmail + Calendar tools (optional; skipped if the Google libraries aren't installed)
 try:
     import google_tools
@@ -616,6 +640,44 @@ def briefing() -> str:
         except Exception as e:
             lines += [f"(Calendar unavailable: {e})"]
     return "\n".join(lines)
+
+
+def get_morning_briefing(city: str = "Chennai") -> str:
+    """Full morning intelligence briefing: date/time, task status, live weather, system battery, and focus stats."""
+    parts = [briefing()]
+    try:
+        import web_tools
+        weather = web_tools.get_weather(city)
+        parts.append(f"\nWEATHER ({city.capitalize()}):\n{weather}")
+    except Exception:
+        pass
+    try:
+        import advanced_system_tools
+        parts.append(f"\n{advanced_system_tools.get_system_status()}")
+    except Exception:
+        pass
+    try:
+        import focus_tools
+        parts.append(f"\n{focus_tools.get_focus_stats()}")
+    except Exception:
+        pass
+    return "\n".join(parts)
+
+
+TOOL_REGISTRY["get_morning_briefing"] = (get_morning_briefing, False)
+TOOL_SCHEMAS.append({
+    "name": "get_morning_briefing",
+    "description": "Get a comprehensive morning briefing including pending tasks, calendar events, live weather forecast for the specified city, hardware/battery health, and focus metrics.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "city": {
+                "type": "string",
+                "description": "City name for the weather report (default: 'Chennai')",
+            }
+        },
+    },
+})
 
 
 def main() -> None:
