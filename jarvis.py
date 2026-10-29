@@ -39,6 +39,29 @@ BASE_DIR = Path(__file__).resolve().parent
 # Load .env (override=True ensures local .env takes precedence over any placeholder system env vars)
 load_dotenv(BASE_DIR / ".env", override=True)
 
+def _ensure_ollama_running():
+    """Ensure local Ollama service is up and listening on 127.0.0.1:11434."""
+    import urllib.request
+    try:
+        urllib.request.urlopen("http://127.0.0.1:11434", timeout=1)
+        return
+    except Exception:
+        pass
+
+    try:
+        import subprocess
+        flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+        subprocess.Popen(
+            ["ollama", "serve"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            creationflags=flags
+        )
+        time.sleep(2)
+    except Exception:
+        pass
+
+
 def init_client_and_model():
     provider = os.getenv("JARVIS_PROVIDER", "").lower().strip()
     gemini_key = os.getenv("GEMINI_API_KEY", "").strip()
@@ -87,9 +110,10 @@ def init_client_and_model():
         model = os.getenv("JARVIS_MODEL", "grok-beta")
         provider = "grok"
     elif provider == "ollama":
+        _ensure_ollama_running()
         key = "ollama"
-        base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1")
-        model = os.getenv("JARVIS_MODEL", "llama3.2")
+        base_url = os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434/v1")
+        model = os.getenv("JARVIS_MODEL", "qwen2.5-coder:7b")
     elif provider == "gemini" or any_key.startswith("AQ.") or any_key.startswith("AIza"):
         key = gemini_key or any_key
         base_url = os.getenv("GEMINI_BASE_URL", "https://generativelanguage.googleapis.com/v1beta/openai/")
@@ -216,6 +240,8 @@ def complete_task(task_id: int) -> str:
 # Later phases add things like send_email with confirm=True.
 TOOL_REGISTRY = {
     "get_current_time": (get_current_time, False),
+    "get_current_datetime": (get_current_time, False),
+    "get_current_date_time": (get_current_time, False),
     "remember": (remember, False),
     "recall": (recall, False),
     "add_task": (add_task, False),
@@ -404,8 +430,14 @@ except ImportError:
 
 def run_tool(name: str, args: dict) -> tuple[str, bool]:
     """Run a tool. Returns (output_text, is_error)."""
-    if name not in TOOL_REGISTRY:
-        return f"Unknown tool: {name}", True
+    clean_name = name.lower().strip().replace("-", "_")
+    if clean_name in TOOL_REGISTRY:
+        name = clean_name
+    elif name not in TOOL_REGISTRY:
+        if "time" in clean_name or "datetime" in clean_name:
+            name = "get_current_time"
+        else:
+            return f"Unknown tool: {name}", True
     fn, needs_confirm = TOOL_REGISTRY[name]
     if callable(needs_confirm):  # some tools decide per call (e.g. run_action reads actions.json)
         needs_confirm = needs_confirm(args)
@@ -569,6 +601,10 @@ def ask(messages: list) -> str:
                 return err
             except Exception as e:
                 err_str = str(e)
+                if "does not support tools" in err_str.lower() and use_tools:
+                    use_tools = None
+                    continue
+
                 if "429" in err_str:
                     if attempt < 3:
                         import re
@@ -595,6 +631,22 @@ def ask(messages: list) -> str:
             last_content = msg.content
 
         if not msg.tool_calls:
+            # Handle local models (e.g. Ollama/Qwen) that output tool calls directly as JSON in text content
+            content_str = (msg.content or "").strip()
+            if content_str.startswith("{") and '"name"' in content_str:
+                try:
+                    parsed = json.loads(content_str)
+                    raw_name = parsed.get("name", "")
+                    raw_args = parsed.get("arguments", {})
+                    output, is_error = run_tool(raw_name, raw_args)
+                    if not is_error:
+                        messages.append({
+                            "role": "user",
+                            "content": f"[Tool execution result for {raw_name}]: {output}\nNow answer the user in natural language (no JSON)."
+                        })
+                        continue
+                except Exception:
+                    pass
             return msg.content or "Done."
 
         for tool_call in msg.tool_calls:
