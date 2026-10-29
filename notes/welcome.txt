@@ -1,0 +1,3 @@
+Welcome to Jarvis Personal Assistant!
+Here you can store notes, project ideas, and study materials.
+Jarvis can read, search, and extract deadlines directly from your notes.

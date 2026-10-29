@@ -1,0 +1,6 @@
+credentials.json
+token.json
+jarvis.db
+projects.json
+actions.json
+__pycache__/

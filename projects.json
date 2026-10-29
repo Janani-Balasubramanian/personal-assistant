@@ -1,0 +1,20 @@
+{
+  "personal-assistant": {
+    "name": "personal-assistant",
+    "path": "c:/Users/VBJanu/Desktop/personal assistant",
+    "description": "Jarvis personal assistant core agent and voice system",
+    "test_command": "python -m unittest discover"
+  },
+  "interview-analyzer": {
+    "name": "interview-analyzer",
+    "path": "c:/Users/VBJanu/Desktop/interview-analyzer/interview-analyzer",
+    "description": "Interview analysis and scoring platform",
+    "test_command": "pytest"
+  },
+  "prismforge": {
+    "name": "prismforge",
+    "path": "c:/Users/VBJanu/Desktop/PrismForge",
+    "description": "PrismForge project",
+    "test_command": "npm test"
+  }
+}

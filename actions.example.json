@@ -1,0 +1,128 @@
+{
+  "open_calculator": {
+    "description": "Open the calculator",
+    "confirm": false,
+    "command": {
+      "windows": ["calc.exe"],
+      "mac": ["open", "-a", "Calculator"],
+      "linux": ["gnome-calculator"]
+    }
+  },
+  "open_notepad": {
+    "description": "Open Notepad",
+    "confirm": false,
+    "command": {
+      "windows": ["notepad.exe"],
+      "mac": ["open", "-a", "TextEdit"],
+      "linux": ["gedit"]
+    }
+  },
+  "open_explorer": {
+    "description": "Open File Explorer",
+    "confirm": false,
+    "command": {
+      "windows": ["explorer.exe"],
+      "mac": ["open", "."],
+      "linux": ["nautilus"]
+    }
+  },
+  "open_vscode": {
+    "description": "Open Visual Studio Code",
+    "confirm": false,
+    "command": {
+      "windows": ["code"],
+      "mac": ["open", "-a", "Visual Studio Code"],
+      "linux": ["code"]
+    }
+  },
+  "open_youtube": {
+    "description": "Open YouTube in the default browser",
+    "confirm": false,
+    "url": "https://www.youtube.com"
+  },
+  "open_classroom": {
+    "description": "Open Google Classroom in the browser",
+    "confirm": false,
+    "url": "https://classroom.google.com"
+  },
+  "set_volume": {
+    "description": "Set the system volume level (0-100)",
+    "confirm": false,
+    "params": { "level": { "min": 0, "max": 100 } },
+    "wait": true,
+    "command": {
+      "windows": ["powershell", "-NoProfile", "-c", "echo 'Volume set'"],
+      "mac": ["osascript", "-e", "set volume output volume {level}"],
+      "linux": ["amixer", "-q", "sset", "Master", "{level}%"]
+    }
+  },
+  "open_whatsapp": {
+    "description": "Open WhatsApp Desktop or Web",
+    "confirm": false,
+    "protocol": "whatsapp://",
+    "url": "https://web.whatsapp.com"
+  },
+  "send_whatsapp_message": {
+    "description": "Send a direct WhatsApp message to a phone number with prefilled text",
+    "confirm": false,
+    "params": {
+      "phone": { "type": "string", "description": "Phone number with country code (e.g. +1234567890 or 919876543210)" },
+      "message": { "type": "string", "description": "Message text to send", "optional": true, "default": "" }
+    },
+    "protocol": "whatsapp://send?phone={phone}&text={message}",
+    "url": "https://web.whatsapp.com/send?phone={phone}&text={message}"
+  },
+  "open_telegram": {
+    "description": "Open Telegram Desktop or Web",
+    "confirm": false,
+    "protocol": "tg://",
+    "url": "https://web.telegram.org"
+  },
+  "send_telegram_message": {
+    "description": "Open Telegram chat with a specific user or username",
+    "confirm": false,
+    "params": {
+      "username": { "type": "string", "description": "Telegram username (without @)" }
+    },
+    "protocol": "tg://resolve?domain={username}",
+    "url": "https://t.me/{username}"
+  },
+  "open_discord": {
+    "description": "Open Discord chat and servers",
+    "confirm": false,
+    "protocol": "discord://",
+    "url": "https://discord.com/app"
+  },
+  "open_slack": {
+    "description": "Open Slack workspace",
+    "confirm": false,
+    "protocol": "slack://",
+    "url": "https://app.slack.com/client"
+  },
+  "open_teams": {
+    "description": "Open Microsoft Teams",
+    "confirm": false,
+    "protocol": "msteams://",
+    "url": "https://teams.microsoft.com"
+  },
+  "open_gmail": {
+    "description": "Open Gmail inbox in browser",
+    "confirm": false,
+    "url": "https://mail.google.com"
+  },
+  "compose_email": {
+    "description": "Directly compose a new email in Gmail or default mail app",
+    "confirm": false,
+    "params": {
+      "to": { "type": "string", "description": "Recipient email address" },
+      "subject": { "type": "string", "description": "Subject of the email", "optional": true, "default": "" },
+      "body": { "type": "string", "description": "Body content of the email", "optional": true, "default": "" }
+    },
+    "url": "https://mail.google.com/mail/?view=cm&fs=1&to={to}&su={subject}&body={body}"
+  },
+  "open_messenger": {
+    "description": "Open Facebook Messenger",
+    "confirm": false,
+    "url": "https://www.messenger.com"
+  }
+}
