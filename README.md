@@ -25,6 +25,10 @@ An AI-powered desktop assistant and interactive holographic companion built with
   - Autoplay Launching: Automatically opens `https://www.youtube.com/watch?v={id}&autoplay=1` or Spotify tracks.
   - Media Controls & Volume: Control background playback (`play_pause`, `next`, `prev`, `volume_up`, `volume_down`, `mute`) and set master volume from 0 to 100%.
   - Dedicated Desktop Doll media context menu and quick action chip.
+- **WhatsApp Persona & Messaging Suite (`whatsapp_tools.py`)**:
+  - **Ghostwriter In Your Voice**: Automatically draft replies mimicking your personal texting voice, habits, and relationship rules (`draft_reply_in_my_voice`).
+  - **Relationship-Aware Profiles**: Stores contacts, relationships (family, best friend, work), and custom tone instructions (`whatsapp_persona.json`).
+  - **Direct Message Dispatch**: Send or open pre-filled WhatsApp chats directly on Windows Desktop or Web (`send_whatsapp_message`).
 - **Productivity & Focus Suite (`focus_tools.py`)**:
   - **Pomodoro Focus Sessions**: Start timed focus sessions (`start_focus_session`) with audio chimes and native Windows toast notifications upon completion.
   - **Productivity Metrics**: Track completed sessions, daily focus hours, and all-time deep work statistics stored in SQLite (`get_focus_stats`).
