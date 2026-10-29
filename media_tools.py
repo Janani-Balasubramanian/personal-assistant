@@ -24,50 +24,98 @@ def _clean_query(raw_query: str) -> str:
     return cleaned or raw_query.strip()
 
 
-def _get_youtube_top_videos(query: str, limit: int = 3) -> list[dict]:
-    """Scrape YouTube's official search result page directly to retrieve authentic top video IDs and titles."""
+def _get_youtube_top_videos(query: str, limit: int = 5) -> list[dict]:
+    """Scrape YouTube's official search result page directly to retrieve authentic top video IDs, titles, and channels."""
+    song_query = _clean_query(query)
+    encoded = urllib.parse.quote(song_query)
+    search_url = f"https://www.youtube.com/results?search_query={encoded}"
+
     headers = {
         "User-Agent": (
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
             "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-        )
+        ),
+        "Accept-Language": "en-US,en;q=0.9",
     }
-    encoded = urllib.parse.quote(query)
-    search_url = f"https://www.youtube.com/results?search_query={encoded}"
 
     req = urllib.request.Request(search_url, headers=headers)
     try:
         html = urllib.request.urlopen(req, timeout=8).read().decode("utf-8", errors="ignore")
-    except Exception as e:
+    except Exception:
         return []
 
-    # Extract distinct video IDs in the order YouTube ranked them
-    video_ids = []
-    for vid in re.findall(r"/watch\?v=([a-zA-Z0-9_-]{11})", html):
-        if vid not in video_ids:
-            video_ids.append(vid)
-        if len(video_ids) >= limit:
-            break
-
     results = []
-    for vid in video_ids:
-        # Fetch individual title
+    m = re.search(r"var ytInitialData\s*=\s*({.*?});</script>", html)
+    if m:
         try:
-            v_req = urllib.request.Request(f"https://www.youtube.com/watch?v={vid}", headers=headers)
-            v_html = urllib.request.urlopen(v_req, timeout=4).read().decode("utf-8", errors="ignore")
-            m = re.search(r"<title>(.*?)</title>", v_html)
-            title = m.group(1).replace(" - YouTube", "").strip() if m else query
+            data = json.loads(m.group(1))
+
+            def extract_renderers(obj):
+                if isinstance(obj, dict):
+                    if "videoRenderer" in obj:
+                        vr = obj["videoRenderer"]
+                        vid = vr.get("videoId")
+                        title_runs = vr.get("title", {}).get("runs", [])
+                        title = "".join(run.get("text", "") for run in title_runs)
+                        channel_runs = vr.get("ownerText", {}).get("runs", [])
+                        channel = "".join(run.get("text", "") for run in channel_runs)
+                        duration = vr.get("lengthText", {}).get("simpleText", "")
+
+                        if vid and title:
+                            results.append({
+                                "id": vid,
+                                "title": title,
+                                "channel": channel,
+                                "duration": duration,
+                                "url": f"https://www.youtube.com/watch?v={vid}",
+                                "autoplay_url": f"https://www.youtube.com/watch?v={vid}&autoplay=1",
+                                "music_url": f"https://music.youtube.com/watch?v={vid}",
+                            })
+                    for v in obj.values():
+                        extract_renderers(v)
+                elif isinstance(obj, list):
+                    for item in obj:
+                        extract_renderers(item)
+
+            extract_renderers(data)
         except Exception:
-            title = query
+            pass
 
-        results.append({
-            "id": vid,
-            "title": title,
-            "url": f"https://www.youtube.com/watch?v={vid}",
-            "music_url": f"https://music.youtube.com/watch?v={vid}",
-        })
+    # Fallback to regex if ytInitialData parsing was empty
+    if not results:
+        video_ids = []
+        for vid in re.findall(r"/watch\?v=([a-zA-Z0-9_-]{11})", html):
+            if vid not in video_ids:
+                video_ids.append(vid)
+            if len(video_ids) >= limit:
+                break
+        for vid in video_ids:
+            results.append({
+                "id": vid,
+                "title": song_query,
+                "channel": "YouTube",
+                "duration": "",
+                "url": f"https://www.youtube.com/watch?v={vid}",
+                "autoplay_url": f"https://www.youtube.com/watch?v={vid}&autoplay=1",
+                "music_url": f"https://music.youtube.com/watch?v={vid}",
+            })
 
-    return results
+    return results[:limit]
+
+
+def _open_url_in_browser(target_url: str):
+    """Launch the browser using Windows native API with fallback to webbrowser module."""
+    if sys.platform == "win32":
+        try:
+            os.startfile(target_url)
+            return True
+        except Exception:
+            pass
+    try:
+        webbrowser.open(target_url, new=2, autoraise=True)
+        return True
+    except Exception:
+        return False
 
 
 def play_music(query: str, platform: str = "youtube") -> str:
@@ -84,11 +132,9 @@ def play_music(query: str, platform: str = "youtube") -> str:
     # 1. Spotify support
     if platform.lower().strip() == "spotify":
         spotify_url = f"https://open.spotify.com/search/{encoded}"
-        try:
-            webbrowser.open(spotify_url)
+        if _open_url_in_browser(spotify_url):
             return f"Opening Spotify to stream: '{song_query}' ({spotify_url})"
-        except Exception as e:
-            return f"Failed to open Spotify: {e}"
+        return f"Failed to launch Spotify in browser for '{song_query}'."
 
     # 2. YouTube & YouTube Music support
     top_videos = _get_youtube_top_videos(song_query, limit=1)
@@ -96,26 +142,22 @@ def play_music(query: str, platform: str = "youtube") -> str:
     if top_videos:
         video = top_videos[0]
         title = video["title"]
+        channel = f" by {video['channel']}" if video["channel"] else ""
         if platform.lower().strip() == "youtube_music":
             target_url = video["music_url"]
             service_label = "YouTube Music"
         else:
-            target_url = f"{video['url']}&autoplay=1"
+            target_url = video["autoplay_url"]
             service_label = "YouTube"
 
-        try:
-            webbrowser.open(target_url)
-            return f"Now playing '{title}' on {service_label}:\n{target_url}"
-        except Exception as e:
-            return f"Found '{title}' but failed to launch browser: {e}"
+        if _open_url_in_browser(target_url):
+            return f"Now playing '{title}'{channel} on {service_label}:\n{target_url}"
+        return f"Found '{title}' but failed to launch browser."
 
-    # Fallback to direct search query if scraping fails
+    # Fallback search URL
     fallback_url = f"https://www.youtube.com/results?search_query={encoded}"
-    try:
-        webbrowser.open(fallback_url)
-        return f"Playing '{song_query}' on YouTube: {fallback_url}"
-    except Exception as e:
-        return f"Failed to open YouTube: {e}"
+    _open_url_in_browser(fallback_url)
+    return f"Playing '{song_query}' on YouTube: {fallback_url}"
 
 
 def search_music_tracks(query: str, limit: int = 5) -> str:
@@ -127,7 +169,9 @@ def search_music_tracks(query: str, limit: int = 5) -> str:
 
     lines = [f"Found {len(videos)} tracks for '{song_query}':"]
     for i, v in enumerate(videos, 1):
-        lines.append(f"{i}. {v['title']}\n   URL: {v['url']}")
+        dur = f" [{v['duration']}]" if v.get("duration") else ""
+        ch = f" ({v['channel']})" if v.get("channel") else ""
+        lines.append(f"{i}. {v['title']}{dur}{ch}\n   URL: {v['url']}")
     return "\n\n".join(lines)
 
 
@@ -185,7 +229,6 @@ def set_volume_level(level: int) -> str:
             volume.SetMasterVolumeLevelScalar(level / 100.0, None)
             return f"Master volume set to {level}%."
         except Exception:
-            # Fallback via PowerShell
             pass
 
     return f"Volume set command sent for {level}%."
@@ -266,4 +309,3 @@ SCHEMAS = [
         },
     },
 ]
-
