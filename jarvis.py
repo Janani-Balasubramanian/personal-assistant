@@ -101,10 +101,18 @@ def init_client_and_model():
             provider = "gemini"
 
     if provider == "groq" or any_key.startswith("gsk_"):
-        key = groq_key or any_key
-        base_url = os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1")
-        model = os.getenv("JARVIS_MODEL", "llama-3.1-8b-instant")
-        provider = "groq"
+        if not groq_key and not any_key.startswith("gsk_") and gemini_key:
+            key = gemini_key
+            base_url = os.getenv("GEMINI_BASE_URL", "https://generativelanguage.googleapis.com/v1beta/openai/")
+            model = os.getenv("JARVIS_MODEL", "gemini-3.5-flash-lite")
+            if "llama" in model.lower() or "qwen" in model.lower():
+                model = "gemini-3.5-flash-lite"
+            provider = "gemini"
+        else:
+            key = groq_key or any_key
+            base_url = os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1")
+            model = os.getenv("JARVIS_MODEL", "llama-3.1-8b-instant")
+            provider = "groq"
     elif provider in ("grok", "xai") or any_key.startswith("xai-"):
         key = grok_key or any_key
         base_url = os.getenv("XAI_BASE_URL", "https://api.x.ai/v1")
