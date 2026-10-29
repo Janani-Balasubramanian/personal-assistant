@@ -648,14 +648,17 @@ def ask(messages: list) -> str:
                     raw_name = parsed.get("name", "")
                     raw_args = parsed.get("arguments", {})
                     output, is_error = run_tool(raw_name, raw_args)
-                    if not is_error:
-                        messages.append({
-                            "role": "user",
-                            "content": f"[Tool execution result for {raw_name}]: {output}\nNow answer the user in natural language (no JSON)."
-                        })
-                        continue
+                    messages.append({
+                        "role": "user",
+                        "content": f"[Result of running {raw_name}]: {output}\nNow tell the user what happened in 1 plain conversational sentence (no JSON)."
+                    })
+                    last_content = str(output)
+                    continue
                 except Exception:
                     pass
+            # If model returned a raw tool call JSON as its final answer, return the human-friendly tool result instead
+            if content_str.startswith("{") and '"name"' in content_str and last_content != "Done.":
+                return last_content
             return msg.content or "Done."
 
         for tool_call in msg.tool_calls:

@@ -143,17 +143,43 @@ def send_whatsapp_message(target: str, message: str, auto_send: bool = False) ->
 
     phone = None
     target_lower = clean_target.lower()
+    
+    # 1. Exact match in contacts
     if target_lower in contacts:
         phone = contacts[target_lower].get("phone")
-    elif re.sub(r"[^\d+]", "", clean_target):
+        target_display = contacts[target_lower].get("display_name", clean_target)
+    # 2. Check for keywords like "friend", "frd", "bestie"
+    elif target_lower in ("frd", "friend", "my friend", "my frd", "bestie"):
+        friend_matches = [
+            (k, v) for k, v in contacts.items()
+            if "friend" in v.get("relationship", "").lower()
+        ]
+        if friend_matches:
+            target_display = friend_matches[0][1].get("display_name", friend_matches[0][0])
+            phone = friend_matches[0][1].get("phone")
+        else:
+            target_display = clean_target
+    # 3. Check if any contact name is inside the query (e.g. "priya")
+    else:
+        target_display = clean_target
+        for k, v in contacts.items():
+            if k in target_lower or target_lower in k:
+                phone = v.get("phone")
+                target_display = v.get("display_name", k)
+                break
+
+    # 4. Direct phone number passed
+    if not phone and re.sub(r"[^\d+]", "", clean_target):
         phone = re.sub(r"[^\d+]", "", clean_target)
         if len(phone) == 10 and not phone.startswith("+"):
             phone = "+91" + phone
 
     if not phone:
+        available = ", ".join(v.get("display_name", k) for k, v in contacts.items()) or "none yet"
         return (
-            f"Contact '{target}' not found in saved WhatsApp contacts. "
-            "Please provide their phone number or save them with `save_whatsapp_contact`."
+            f"I couldn't find a saved WhatsApp contact for '{target}'. "
+            f"Saved contacts: {available}. "
+            "Please tell me their name or phone number so I can message them."
         )
 
     # Clean phone (digits only for whatsapp URL)
@@ -208,7 +234,7 @@ REGISTRY = {
     "save_whatsapp_contact": (save_whatsapp_contact, False),
     "list_whatsapp_contacts": (list_whatsapp_contacts, False),
     "draft_reply_in_my_voice": (draft_reply_in_my_voice, False),
-    "send_whatsapp_message": (send_whatsapp_message, True),  # Requires user confirmation for safety
+    "send_whatsapp_message": (send_whatsapp_message, False),  # User granted direct execution permission
     "update_my_texting_style": (update_my_texting_style, False),
 }
 
