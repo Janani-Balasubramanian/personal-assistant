@@ -574,7 +574,14 @@ def try_fast_reflex_action(prompt: str) -> str | None:
         return None
 
     # 1. WhatsApp Messaging
-    m_wa = re.match(r'^(?:can\s+you\s+)?(?:please\s+)?(?:send\s+(?:a\s+)?whatsapp\s+(?:message\s+)?to|text)\s+([a-zA-Z0-9_\s]+?)\s+(?:saying|that)\s+(.+)$', t, re.I)
+    m_wa = re.match(
+        r'^(?:can\s+you\s+)?(?:please\s+)?'
+        r'(?:send\s+(?:a\s+)?(?:whatsapp\s+message|whatsapp\s+msg|whatsapp|message|msg)\s+to\s+|whatsapp\s+|text\s+|reply\s+to\s+)'
+        r'([a-zA-Z0-9_\s]+?)'
+        r'(?:\s+(?:saying|that|with|as)\s+|\s*:\s*)'
+        r'(.+)$',
+        t, re.I
+    )
     if m_wa:
         target = m_wa.group(1).strip()
         msg = m_wa.group(2).strip()

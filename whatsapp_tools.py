@@ -17,18 +17,45 @@ PERSONA_FILE = BASE_DIR / "whatsapp_persona.json"
 
 
 def _load_persona() -> dict:
-    if not PERSONA_FILE.exists():
-        return {
-            "user_name": "Janani",
-            "tone": "Warm, concise, friendly, casual with friends, polite with elders.",
-            "habits": ["Keep replies short (1-2 sentences)", "Sound natural, never robotic"],
-            "contacts": {},
-        }
-    try:
-        with open(PERSONA_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return {"user_name": "Janani", "tone": "Friendly and concise", "habits": [], "contacts": {}}
+    data = {
+        "user_name": "Janani",
+        "tone": "Warm, concise, friendly, casual with friends, polite with elders.",
+        "habits": ["Keep replies short (1-2 sentences)", "Sound natural, never robotic"],
+        "contacts": {},
+    }
+    if PERSONA_FILE.exists():
+        try:
+            with open(PERSONA_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        except Exception:
+            pass
+
+    # Automatically merge contacts from jarvis.db memory (e.g. contact_paniiii, contact_gayu_maa)
+    db_path = BASE_DIR / "jarvis.db"
+    if db_path.exists():
+        try:
+            import sqlite3
+            conn = sqlite3.connect(str(db_path))
+            cur = conn.cursor()
+            rows = cur.execute("SELECT key, value FROM memory WHERE key LIKE 'contact_%'").fetchall()
+            contacts = data.setdefault("contacts", {})
+            for k, v in rows:
+                c_name = k.replace("contact_", "").strip().lower()
+                clean_ph = re.sub(r"[^\d+]", "", str(v).strip())
+                if clean_ph and c_name not in contacts:
+                    if len(clean_ph) == 10 and not clean_ph.startswith("+"):
+                        clean_ph = "+91" + clean_ph
+                    contacts[c_name] = {
+                        "display_name": c_name.capitalize(),
+                        "phone": clean_ph,
+                        "relationship": "friend",
+                        "tone_note": "friendly",
+                    }
+            conn.close()
+        except Exception:
+            pass
+
+    return data
 
 
 def _save_persona(data: dict) -> None:
@@ -184,43 +211,28 @@ def send_whatsapp_message(target: str, message: str, auto_send: bool = False) ->
 
     # Clean phone (digits only for whatsapp URL)
     phone_digits = re.sub(r"[^\d]", "", phone)
+    # Ensure standard 10-digit numbers get the country code (India +91)
+    if len(phone_digits) == 10:
+        phone_digits = "91" + phone_digits
+
     encoded_msg = urllib.parse.quote(message.strip())
 
-    # Try WhatsApp Desktop Protocol first, fallback to WhatsApp Web
+    # Direct Web URL with app_absent=0 opens the chat directly in Chrome/default browser
+    web_url = f"https://web.whatsapp.com/send/?phone={phone_digits}&text={encoded_msg}&type=phone_number&app_absent=0"
     desktop_url = f"whatsapp://send?phone={phone_digits}&text={encoded_msg}"
-    web_url = f"https://web.whatsapp.com/send?phone={phone_digits}&text={encoded_msg}"
 
-    opened = False
+    # Always open in default browser so the chat and message are immediately visible to the user
+    import webbrowser
+    webbrowser.open(web_url, new=2)
+
+    # In parallel, attempt desktop app trigger if installed
     if sys.platform == "win32":
         try:
             os.startfile(desktop_url)
-            opened = True
         except Exception:
             pass
 
-    if not opened:
-        import webbrowser
-        webbrowser.open(web_url)
-
-    if auto_send:
-        # Wait for WhatsApp window to gain focus, then send
-        time.sleep(2.0)
-        try:
-            import win32api
-            import win32con
-            win32api.keybd_event(win32con.VK_RETURN, 0, 0, 0)
-            win32api.keybd_event(win32con.VK_RETURN, 0, win32con.KEYEVENTF_KEYUP, 0)
-            return f"WhatsApp message sent to {target} ({phone}): '{message}'"
-        except Exception:
-            try:
-                import pyautogui
-                pyautogui.FAILSAFE = False
-                pyautogui.press("enter")
-                return f"WhatsApp message sent to {target} ({phone}): '{message}'"
-            except Exception:
-                pass
-
-    return f"WhatsApp opened for {target} ({phone}) with your message ready to review and send."
+    return f"WhatsApp opened for {target_display} (+{phone_digits}) with message: '{message}'. The chat and message are open on your screen."
 
 
 def update_my_texting_style(new_tone: str, new_rules: str = "") -> str:
