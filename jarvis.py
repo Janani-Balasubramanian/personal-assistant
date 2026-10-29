@@ -492,8 +492,10 @@ def build_system_prompt() -> str:
         "When the user asks to text or message a contact by name (e.g. 'sister', 'gayu maa'), check saved memory with recall once. If their phone number isn't saved yet, do not chain multiple search tools; immediately ask the user directly for their phone number so you can reach them and remember it for future requests. When a number is provided, save it with remember('contact_<name>', '<number>') and send the message.\n"
         "To conserve rate limits, execute only essential tool calls and avoid chaining redundant searches.\n"
         "For deep computer control, use get_system_status (CPU/RAM/Battery), list_running_apps, "
+        "open_application (e.g. 'spotify', 'calculator', 'notepad', 'chrome', 'whatsapp', 'settings'), "
         "close_app, press_hotkey (e.g. 'win+d', 'alt+tab', 'ctrl+c'), type_text, read_clipboard, "
-        "write_clipboard, media_control ('play_pause', 'next', 'prev', 'mute'), and lock_workstation.\n"
+        "write_clipboard, media_control ('play_pause', 'next', 'prev', 'mute'), and lock_workstation. "
+        "Always use open_application to launch apps — never use run_terminal_command for simple app launching.\n"
         "For real-time internet questions or weather, use search_web and get_weather.\n"
         "For WhatsApp messaging and drafting replies, use save_whatsapp_contact, list_whatsapp_contacts, draft_reply_in_my_voice, send_whatsapp_message, and update_my_texting_style. When drafting replies, match the user's authentic texting voice and relationship rules.\n"
         "To play any song, soundtrack, artist, or music video, ALWAYS use `play_music(query=...)`. It performs high-precision direct YouTube/Spotify matching and launches the exact video with autoplay. To control playback (pause, resume, skip, mute), use `control_media` or `set_volume_level`. Never tell the user you cannot play media or ask them to search manually.\n"
@@ -675,7 +677,18 @@ def try_fast_reflex_action(prompt: str) -> str | None:
         except Exception:
             pass
 
-    # 9. List Pending Tasks
+    # 9. Direct Desktop App Launch (e.g. "open spotify", "launch calculator", "open chrome")
+    m_app = re.match(r'^(?:can\s+you\s+)?(?:please\s+)?(?:open|launch|start)\s+(?:the\s+)?([a-zA-Z0-9_\s]+?)(?:\s+app)?$', t, re.I)
+    if m_app:
+        app_target = m_app.group(1).strip()
+        if not any(k in app_target.lower() for k in ["song", "music", "video", "track", "movie", "youtube", "pomodoro", "session", "timer"]):
+            try:
+                import advanced_system_tools
+                return advanced_system_tools.open_application(app_target)
+            except Exception as e:
+                return f"Failed to open {app_target}: {e}"
+
+    # 10. List Pending Tasks
     if any(t_lower == p for p in ("list my pending tasks", "list tasks", "my tasks", "show tasks", "pending tasks")):
         return list_tasks(include_done=False)
 

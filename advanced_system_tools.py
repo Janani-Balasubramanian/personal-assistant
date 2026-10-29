@@ -155,6 +155,55 @@ def media_control(action: str) -> str:
         return f"Media control failed: {e}"
 
 
+APP_MAP = {
+    "spotify": "spotify:",
+    "whatsapp": "whatsapp:",
+    "calculator": "calc.exe",
+    "calc": "calc.exe",
+    "notepad": "notepad.exe",
+    "notes": "notepad.exe",
+    "chrome": "chrome",
+    "google chrome": "chrome",
+    "browser": "https://www.google.com",
+    "edge": "msedge",
+    "settings": "ms-settings:",
+    "windows settings": "ms-settings:",
+    "file explorer": "explorer.exe",
+    "explorer": "explorer.exe",
+    "files": "explorer.exe",
+    "task manager": "taskmgr.exe",
+    "taskmgr": "taskmgr.exe",
+    "paint": "mspaint.exe",
+    "vscode": "code",
+    "vs code": "code",
+    "terminal": "wt.exe",
+    "cmd": "cmd.exe",
+    "powershell": "powershell.exe",
+}
+
+
+def open_application(app_name: str) -> str:
+    """Safely launch a desktop application or Windows tool (e.g. 'spotify', 'calculator', 'notepad', 'chrome', 'whatsapp')."""
+    clean = app_name.strip().lower()
+    target = APP_MAP.get(clean, clean)
+
+    try:
+        if sys.platform == "win32":
+            if ":" in target or target.endswith(".exe"):
+                try:
+                    os.startfile(target)
+                    return f"Successfully opened {app_name}."
+                except Exception:
+                    pass
+            subprocess.Popen(target, shell=True)
+            return f"Successfully opened {app_name}."
+        else:
+            subprocess.Popen([target])
+            return f"Successfully opened {app_name}."
+    except Exception as e:
+        return f"Failed to open '{app_name}': {e}"
+
+
 def lock_workstation() -> str:
     """Lock the Windows workstation immediately."""
     try:
@@ -169,6 +218,8 @@ def lock_workstation() -> str:
 REGISTRY = {
     "get_system_status": (get_system_status, False),
     "list_running_apps": (list_running_apps, False),
+    "open_application": (open_application, False),
+    "launch_app": (open_application, False),
     "close_app": (close_app, True),
     "press_hotkey": (press_hotkey, False),
     "type_text": (type_text, False),
@@ -179,6 +230,17 @@ REGISTRY = {
 }
 
 SCHEMAS = [
+    {
+        "name": "open_application",
+        "description": "Launch a desktop app or Windows program safely (e.g. 'spotify', 'calculator', 'notepad', 'chrome', 'whatsapp', 'settings', 'file explorer'). Does not require terminal execution.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "app_name": {"type": "string", "description": "The name of the app to launch (e.g. 'spotify', 'calculator', 'notepad', 'chrome')"}
+            },
+            "required": ["app_name"],
+        },
+    },
     {
         "name": "get_system_status",
         "description": "Get current hardware statistics: CPU load %, RAM usage, free Disk space, and Battery level.",
