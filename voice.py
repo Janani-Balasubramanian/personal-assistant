@@ -13,7 +13,19 @@ Jarvis says what it wants to do, then listens for a clear "yes". Anything else c
 
 import os
 import re
+import sys
 import time
+
+if sys.stdout and hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+if sys.stderr and hasattr(sys.stderr, "reconfigure"):
+    try:
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
 
 SAMPLE_RATE = 16000
 FRAME = 1600            # 100 ms of audio per frame

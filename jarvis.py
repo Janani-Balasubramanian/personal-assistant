@@ -20,6 +20,18 @@ import sys
 import time
 from pathlib import Path
 
+# Ensure standard streams handle all Unicode characters (Tamil, Hindi, emojis, etc.) without Windows charmap crashes
+if sys.stdout and hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+if sys.stderr and hasattr(sys.stderr, "reconfigure"):
+    try:
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 import openai
 from dotenv import load_dotenv
 
@@ -586,7 +598,10 @@ def ask(messages: list) -> str:
                     args = {}
                 output, is_error = run_tool(tool_call.function.name, args)
                 seen_calls[call_sig] = str(output)[:100]
-                print(f"  [tool] {tool_call.function.name}(...) -> {str(output)[:80]}")
+                try:
+                    print(f"  [tool] {tool_call.function.name}(...) -> {str(output)[:80]}")
+                except Exception:
+                    pass
 
             messages.append({
                 "role": "tool",

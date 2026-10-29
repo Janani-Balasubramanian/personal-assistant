@@ -27,17 +27,27 @@ CONFIG_FILE = BASE_DIR / "doll_settings.json"
 # In pythonw.exe, stdout and stderr are None; redirect them so prints don't crash
 if sys.stdout is None:
     try:
-        sys.stdout = open(BASE_DIR / "doll_stdout.log", "a", encoding="utf-8", buffering=1)
+        sys.stdout = open(BASE_DIR / "doll_stdout.log", "a", encoding="utf-8", errors="replace", buffering=1)
     except Exception:
         import io
         sys.stdout = io.StringIO()
+elif hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
 
 if sys.stderr is None:
     try:
-        sys.stderr = open(BASE_DIR / "doll_stderr.log", "a", encoding="utf-8", buffering=1)
+        sys.stderr = open(BASE_DIR / "doll_stderr.log", "a", encoding="utf-8", errors="replace", buffering=1)
     except Exception:
         import io
         sys.stderr = io.StringIO()
+elif hasattr(sys.stderr, "reconfigure"):
+    try:
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
 
 
 # Try importing sound module for Windows sci-fi feedback
