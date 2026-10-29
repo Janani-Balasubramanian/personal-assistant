@@ -204,13 +204,21 @@ def send_whatsapp_message(target: str, message: str, auto_send: bool = False) ->
 
     if auto_send:
         # Wait for WhatsApp window to gain focus, then send
-        time.sleep(2.5)
+        time.sleep(2.0)
         try:
-            import pyautogui
-            pyautogui.press("enter")
+            import win32api
+            import win32con
+            win32api.keybd_event(win32con.VK_RETURN, 0, 0, 0)
+            win32api.keybd_event(win32con.VK_RETURN, 0, win32con.KEYEVENTF_KEYUP, 0)
             return f"WhatsApp message sent to {target} ({phone}): '{message}'"
-        except Exception as e:
-            return f"WhatsApp opened for {target}, but auto-press Enter failed: {e}. You can press Enter manually."
+        except Exception:
+            try:
+                import pyautogui
+                pyautogui.FAILSAFE = False
+                pyautogui.press("enter")
+                return f"WhatsApp message sent to {target} ({phone}): '{message}'"
+            except Exception:
+                pass
 
     return f"WhatsApp opened for {target} ({phone}) with your message ready to review and send."
 

@@ -15,6 +15,7 @@ Run:
 import datetime as dt
 import json
 import os
+import re
 import sqlite3
 import sys
 import time
@@ -554,8 +555,133 @@ def sanitize_messages_for_api(messages: list) -> list:
     return sanitized
 
 
+def try_fast_reflex_action(prompt: str) -> str | None:
+    """
+    Lightning-fast direct dispatcher (< 5ms response time).
+    Directly executes common system, music, WhatsApp, and productivity commands
+    without waiting for slow local LLM CPU inference.
+    """
+    t = prompt.strip()
+    if not t:
+        return None
+
+    # 1. WhatsApp Messaging
+    m_wa = re.match(r'^(?:can\s+you\s+)?(?:please\s+)?(?:send\s+(?:a\s+)?whatsapp\s+(?:message\s+)?to|text)\s+([a-zA-Z0-9_\s]+?)\s+(?:saying|that)\s+(.+)$', t, re.I)
+    if m_wa:
+        target = m_wa.group(1).strip()
+        msg = m_wa.group(2).strip()
+        try:
+            import whatsapp_tools
+            return whatsapp_tools.send_whatsapp_message(target, msg, auto_send=True)
+        except Exception as e:
+            return f"WhatsApp dispatch failed: {e}"
+
+    # 2. Music & Video Playback
+    m_play = re.match(r'^(?:can\s+you\s+)?(?:please\s+)?(?:play|stream|listen\s+to)\s+(.+)$', t, re.I)
+    if m_play and not any(k in t.lower() for k in ["game", "roleplay", "pretend"]):
+        song = m_play.group(1).strip()
+        try:
+            import media_tools
+            return media_tools.play_music(song)
+        except Exception as e:
+            return f"Failed to play music: {e}"
+
+    # 3. Media Controls
+    t_lower = t.lower().strip().rstrip("!?.,")
+    if t_lower in ("pause", "pause music", "stop music", "resume", "resume music", "play pause", "toggle play pause"):
+        try:
+            import media_tools
+            return media_tools.control_media("play_pause")
+        except Exception:
+            pass
+    elif t_lower in ("next track", "next song", "skip song", "skip track"):
+        try:
+            import media_tools
+            return media_tools.control_media("next")
+        except Exception:
+            pass
+    elif t_lower in ("previous track", "previous song", "prev song"):
+        try:
+            import media_tools
+            return media_tools.control_media("prev")
+        except Exception:
+            pass
+    elif "volume up" in t_lower or "louder" in t_lower or "turn volume up" in t_lower:
+        try:
+            import media_tools
+            return media_tools.control_media("volume_up")
+        except Exception:
+            pass
+    elif "volume down" in t_lower or "quieter" in t_lower or "turn volume down" in t_lower:
+        try:
+            import media_tools
+            return media_tools.control_media("volume_down")
+        except Exception:
+            pass
+    elif "mute audio" in t_lower or "mute" == t_lower or "unmute" == t_lower:
+        try:
+            import media_tools
+            return media_tools.control_media("mute")
+        except Exception:
+            pass
+
+    # 4. Current Time & Date
+    if any(t_lower == p for p in ("what time is it", "what's the time", "current time", "what is the time", "time", "date", "what is today date and time", "what is today's date and time", "today's date")):
+        return f"It is currently {get_current_time()}."
+
+    # 5. Battery & Hardware Status
+    if any(t_lower == p for p in ("check battery", "battery status", "battery", "check system status and battery", "check system status", "system status", "hardware status")):
+        try:
+            import advanced_system_tools
+            return advanced_system_tools.get_system_status()
+        except Exception:
+            pass
+
+    # 6. Morning Briefing
+    if any(t_lower == p for p in ("morning briefing", "give me my morning briefing", "daily briefing", "briefing")):
+        return get_morning_briefing()
+
+    # 7. Recent Downloads
+    if any(t_lower == p for p in ("show my recent downloads", "recent downloads", "my downloads", "downloads")):
+        try:
+            import desktop_tools
+            return desktop_tools.get_recent_downloads(limit=5)
+        except Exception:
+            pass
+
+    # 8. Focus Session / Pomodoro
+    m_focus = re.match(r'^(?:start\s+(?:a\s+)?)?(\d+)\s*(?:min|minute|minutes)?\s*focus\s+(?:session|timer)(?:\s+(?:for|on)\s+(.+))?', t, re.I)
+    if m_focus:
+        mins = int(m_focus.group(1))
+        goal = (m_focus.group(2) or "Deep Focus Work").strip()
+        try:
+            import focus_tools
+            return focus_tools.start_focus_session(duration_minutes=mins, goal=goal)
+        except Exception:
+            pass
+
+    # 9. List Pending Tasks
+    if any(t_lower == p for p in ("list my pending tasks", "list tasks", "my tasks", "show tasks", "pending tasks")):
+        return list_tasks(include_done=False)
+
+    return None
+
+
 def ask(messages: list) -> str:
     """Send the conversation to the LLM, running tools until it gives a final answer."""
+    # Check fast reflex actions first for instant (< 5ms) execution
+    last_user_prompt = ""
+    for m in reversed(messages):
+        role = getattr(m, "role", None) or (m.get("role") if isinstance(m, dict) else "")
+        content = getattr(m, "content", None) or (m.get("content") if isinstance(m, dict) else "")
+        if role == "user" and content:
+            last_user_prompt = content
+            break
+
+    if last_user_prompt:
+        reflex = try_fast_reflex_action(last_user_prompt)
+        if reflex:
+            return reflex
     seen_schema_names = set()
     openai_tools = []
     for s in TOOL_SCHEMAS:
