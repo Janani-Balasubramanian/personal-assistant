@@ -20,6 +20,11 @@ An AI-powered desktop assistant and interactive holographic companion built with
   - Global Windows hotkey: Press **`Ctrl + Alt + J`** from any application to instantly summon or toggle the assistant panel.
   - Right-click settings menu to launch focus sessions, summarize clipboard, check downloads, toggle wake word, or adjust position.
   - Automatically saves on-screen position across reboots (`doll_settings.json`).
+- **High-Precision Music & Entertainment Suite (`media_tools.py`)**:
+  - Direct video identification: Directly queries YouTube and scrapes exact official video IDs and titles without relying on fragile external web scrapers.
+  - Autoplay Launching: Automatically opens `https://www.youtube.com/watch?v={id}&autoplay=1` or Spotify tracks.
+  - Media Controls & Volume: Control background playback (`play_pause`, `next`, `prev`, `volume_up`, `volume_down`, `mute`) and set master volume from 0 to 100%.
+  - Dedicated Desktop Doll media context menu and quick action chip.
 - **Productivity & Focus Suite (`focus_tools.py`)**:
   - **Pomodoro Focus Sessions**: Start timed focus sessions (`start_focus_session`) with audio chimes and native Windows toast notifications upon completion.
   - **Productivity Metrics**: Track completed sessions, daily focus hours, and all-time deep work statistics stored in SQLite (`get_focus_stats`).

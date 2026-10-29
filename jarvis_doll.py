@@ -229,6 +229,7 @@ class HolographicPanel(tk.Toplevel):
 
         quick_actions = [
             ("☀️ Briefing", lambda: self.on_send_callback("give me my morning briefing")),
+            ("🎵 Music", lambda: self.on_send_callback("play trending hits on youtube")),
             ("⏱️ Focus", lambda: self.on_send_callback("start a 25 minute focus session for deep work")),
             ("📋 Clip AI", lambda: self.on_send_callback("summarize what is on my clipboard")),
             ("📂 Downloads", lambda: self.on_send_callback("show my recent downloads")),
@@ -710,6 +711,16 @@ class DollWidget(tk.Tk):
         msg_menu.add_command(label="👥 Teams", command=lambda: self.send_user_message("open teams"))
         msg_menu.add_command(label="✉️ Gmail", command=lambda: self.send_user_message("open gmail"))
         self.menu.add_cascade(label="💬 Messaging Apps", menu=msg_menu)
+
+        # Media controls submenu
+        media_menu = tk.Menu(self.menu, tearoff=0, bg="#0f172a", fg="#f8fafc", activebackground="#0284c7")
+        media_menu.add_command(label="▶️ Play / Pause", command=lambda: self.send_user_message("toggle play pause on media"))
+        media_menu.add_command(label="⏭️ Next Track", command=lambda: self.send_user_message("next track"))
+        media_menu.add_command(label="⏮️ Previous Track", command=lambda: self.send_user_message("previous track"))
+        media_menu.add_command(label="🔊 Volume Up (+10%)", command=lambda: self.send_user_message("turn volume up"))
+        media_menu.add_command(label="🔉 Volume Down (-10%)", command=lambda: self.send_user_message("turn volume down"))
+        media_menu.add_command(label="🔇 Mute / Unmute", command=lambda: self.send_user_message("mute audio"))
+        self.menu.add_cascade(label="🎵 Music & Media Controls", menu=media_menu)
 
         self.menu.add_separator()
         self.menu.add_command(label="☀️ Morning Briefing", command=lambda: self.send_user_message("give me my morning briefing"))

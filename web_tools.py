@@ -94,51 +94,19 @@ def get_weather(city: str = "Chennai") -> str:
 
 def play_music(query: str, platform: str = "youtube") -> str:
     """Play a song, music video, or playlist on YouTube or Spotify in your web browser."""
-    import re
-    import webbrowser
-    query_clean = query.strip()
-    if not query_clean:
-        return "Please specify a song or artist name to play."
-
-    encoded = urllib.parse.quote(query_clean)
-
-    if platform.lower() == "spotify":
-        url = f"https://open.spotify.com/search/{encoded}"
-        try:
-            webbrowser.open(url)
-            return f"Opening Spotify to play: '{query_clean}' ({url})"
-        except Exception as e:
-            return f"Failed to open Spotify: {e}"
-
-    # Default to YouTube
-    target_url = None
     try:
-        from ddgs import DDGS
-        results = list(DDGS().text(f"site:youtube.com/watch {query_clean}", max_results=3))
-        for r in results:
-            href = r.get("href", "")
-            # Extract video ID
-            m = re.search(r'(?:v=|/watch/|/watch/\?v=)([a-zA-Z0-9_-]{11})', href)
-            if m:
-                target_url = f"https://www.youtube.com/watch?v={m.group(1)}"
-                break
-    except Exception:
-        pass
-
-    if not target_url:
-        target_url = f"https://www.youtube.com/results?search_query={encoded}"
-
-    try:
-        webbrowser.open(target_url)
-        return f"Playing '{query_clean}' on YouTube: {target_url}"
+        import media_tools
+        return media_tools.play_music(query, platform=platform)
     except Exception as e:
-        return f"Failed to open YouTube: {e}"
+        import webbrowser
+        url = f"https://www.youtube.com/results?search_query={urllib.parse.quote(query)}"
+        webbrowser.open(url)
+        return f"Playing '{query}' on YouTube: {url}"
 
 
 REGISTRY = {
     "search_web": (search_web, False),
     "get_weather": (get_weather, False),
-    "play_music": (play_music, False),
 }
 
 SCHEMAS = [
@@ -162,25 +130,6 @@ SCHEMAS = [
                 "city": {"type": "string", "description": "City name, e.g. 'Chennai', 'London', 'New York'"}
             },
             "required": ["city"],
-        },
-    },
-    {
-        "name": "play_music",
-        "description": "Play a song, track, music video, or artist on YouTube or Spotify in the user's browser.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "query": {
-                    "type": "string",
-                    "description": "Song name, artist, or movie title to play (e.g. 'usure neethan pulla mandadi', 'Shape of You')",
-                },
-                "platform": {
-                    "type": "string",
-                    "enum": ["youtube", "spotify"],
-                    "description": "Music platform to play on (default: 'youtube')",
-                },
-            },
-            "required": ["query"],
         },
     },
 ]

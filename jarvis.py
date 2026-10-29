@@ -384,6 +384,14 @@ try:
 except ImportError as e:
     print(f"(Clipboard AI tools disabled: {e})")
 
+# Phase 15: Advanced Media & Music entertainment
+try:
+    import media_tools
+    TOOL_REGISTRY.update(media_tools.REGISTRY)
+    TOOL_SCHEMAS.extend(media_tools.SCHEMAS)
+except ImportError as e:
+    print(f"(Media tools disabled: {e})")
+
 # Phase 2: Gmail + Calendar tools (optional; skipped if the Google libraries aren't installed)
 try:
     import google_tools
@@ -438,7 +446,7 @@ def build_system_prompt() -> str:
         "close_app, press_hotkey (e.g. 'win+d', 'alt+tab', 'ctrl+c'), type_text, read_clipboard, "
         "write_clipboard, media_control ('play_pause', 'next', 'prev', 'mute'), and lock_workstation.\n"
         "For real-time internet questions or weather, use search_web and get_weather.\n"
-        "To play any song, music, video, or soundtrack, ALWAYS use `play_music(query=...)`. It automatically searches and launches the track directly in the user's browser to play immediately. Never tell the user you cannot play media or ask them to search manually.\n"
+        "To play any song, soundtrack, artist, or music video, ALWAYS use `play_music(query=...)`. It performs high-precision direct YouTube/Spotify matching and launches the exact video with autoplay. To control playback (pause, resume, skip, mute), use `control_media` or `set_volume_level`. Never tell the user you cannot play media or ask them to search manually.\n"
         "For deep work and pomodoros, use start_focus_session, stop_focus_session, and get_focus_stats.\n"
         "To inspect or transform copied clipboard text, use process_clipboard.\n"
         "To find local files or downloads on the computer, use search_local_files and get_recent_downloads.\n"
@@ -507,17 +515,20 @@ def sanitize_messages_for_api(messages: list) -> list:
 
 def ask(messages: list) -> str:
     """Send the conversation to the LLM, running tools until it gives a final answer."""
-    openai_tools = [
-        {
-            "type": "function",
-            "function": {
-                "name": s["name"],
-                "description": s["description"],
-                "parameters": s.get("input_schema", {"type": "object", "properties": {}})
-            }
-        }
-        for s in TOOL_SCHEMAS
-    ]
+    seen_schema_names = set()
+    openai_tools = []
+    for s in TOOL_SCHEMAS:
+        s_name = s.get("name")
+        if s_name and s_name not in seen_schema_names:
+            seen_schema_names.add(s_name)
+            openai_tools.append({
+                "type": "function",
+                "function": {
+                    "name": s_name,
+                    "description": s["description"],
+                    "parameters": s.get("input_schema", {"type": "object", "properties": {}})
+                }
+            })
 
     system = build_system_prompt() + (VOICE_NOTE if VOICE_MODE else "")
     seen_calls = {}
